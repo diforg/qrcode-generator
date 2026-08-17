@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        ENV: production
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - db
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: ./nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "80:80"
+
+volumes:
+  pg_data:
