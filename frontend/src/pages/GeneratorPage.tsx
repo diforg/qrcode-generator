@@ -6,8 +6,8 @@ import { QrColorPicker } from "../components/qr/QrColorPicker";
 import { QrExportButtons } from "../components/qr/QrExportButtons";
 import { QrLogoUploader } from "../components/qr/QrLogoUploader";
 import { useQrGenerator } from "../hooks/useQrGenerator";
-import { createTemplate } from "../services/templateService";
-import type { TemplateItem } from "../types";
+import { createTemplate, updateTemplate } from "../services/templateService";
+import type { HistoryItem, TemplateItem } from "../types";
 
 export function GeneratorPage() {
   const location = useLocation();
@@ -15,22 +15,41 @@ export function GeneratorPage() {
   const [templateName, setTemplateName] = useState("Meu template");
   const [templateStatus, setTemplateStatus] = useState<string | null>(null);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
 
   useEffect(() => {
-    const template = (location.state as { template?: TemplateItem } | null)?.template;
-    if (!template) {
+    const state = location.state as { template?: TemplateItem; historyItem?: HistoryItem } | null;
+    const template = state?.template;
+    const historyItem = state?.historyItem;
+
+    if (template) {
+      setForm((current) => ({
+        ...current,
+        targetUrl: current.targetUrl,
+        fgColor: template.fg_color,
+        bgColor: template.bg_color,
+        dotStyle: template.dot_style,
+        errorCorrection: template.error_correction,
+      }));
+      setSelectedTemplateId(template.id);
+      setTemplateName(template.name);
+      setTemplateStatus(`Modelo "${template.name}" carregado.`);
       return;
     }
 
-    setForm((current) => ({
-      ...current,
-      fgColor: template.fg_color,
-      bgColor: template.bg_color,
-      dotStyle: template.dot_style,
-      errorCorrection: template.error_correction,
-    }));
-    setTemplateName(template.name);
-    setTemplateStatus(`Modelo "${template.name}" carregado.`);
+    if (historyItem) {
+      setForm((current) => ({
+        ...current,
+        targetUrl: historyItem.target_url,
+        fgColor: historyItem.fg_color,
+        bgColor: historyItem.bg_color,
+        exportFormat: historyItem.export_format,
+        resolution: historyItem.resolution,
+      }));
+      setSelectedTemplateId(null);
+      setTemplateName("Geracao recente");
+      setTemplateStatus("Configuracao reaproveitada do historico.");
+    }
   }, [location.state, setForm]);
 
   async function handleSaveTemplate() {
@@ -43,14 +62,26 @@ export function GeneratorPage() {
     try {
       setSavingTemplate(true);
       setTemplateStatus(null);
-      await createTemplate({
-        name,
-        fg_color: form.fgColor,
-        bg_color: form.bgColor,
-        dot_style: form.dotStyle,
-        error_correction: form.errorCorrection,
-      });
-      setTemplateStatus("Template salvo com sucesso.");
+
+      if (selectedTemplateId) {
+        await updateTemplate(selectedTemplateId, {
+          name,
+          fg_color: form.fgColor,
+          bg_color: form.bgColor,
+          dot_style: form.dotStyle,
+          error_correction: form.errorCorrection,
+        });
+        setTemplateStatus("Template atualizado com sucesso.");
+      } else {
+        await createTemplate({
+          name,
+          fg_color: form.fgColor,
+          bg_color: form.bgColor,
+          dot_style: form.dotStyle,
+          error_correction: form.errorCorrection,
+        });
+        setTemplateStatus("Template salvo com sucesso.");
+      }
     } catch (saveError) {
       setTemplateStatus(saveError instanceof Error ? saveError.message : "Nao foi possivel salvar o template.");
     } finally {
@@ -159,7 +190,7 @@ export function GeneratorPage() {
               disabled={savingTemplate}
               className="mt-4 rounded-full bg-ink px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {savingTemplate ? "Salvando..." : "Salvar template"}
+              {savingTemplate ? "Salvando..." : selectedTemplateId ? "Atualizar template" : "Salvar template"}
             </button>
 
             {templateStatus ? <p className="mt-3 text-sm text-slate-600">{templateStatus}</p> : null}

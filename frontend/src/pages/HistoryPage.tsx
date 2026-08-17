@@ -94,6 +94,13 @@ export function HistoryPage() {
                 <span className="inline-block h-6 w-6 rounded-full border border-slate-200" style={{ backgroundColor: item.bg_color }} />
                 <button
                   type="button"
+                  onClick={() => navigate("/generator", { state: { historyItem: item } })}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-slate-500"
+                >
+                  Reusar
+                </button>
+                <button
+                  type="button"
                   onClick={() => void handleDelete(item.id)}
                   className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 transition hover:bg-red-100"
                 >

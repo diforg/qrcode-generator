@@ -107,6 +107,13 @@ export function DashboardPage() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => navigate("/generator", { state: { template } })}
+                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-slate-500"
+                >
+                  Editar
+                </button>
+                <button
+                  type="button"
                   onClick={() => void handleDeleteTemplate(template.id)}
                   className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 transition hover:bg-red-100"
                 >
