@@ -1,12 +1,62 @@
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+
 import { QrCanvasPreview } from "../components/qr/QrCanvasPreview";
 import { QrColorPicker } from "../components/qr/QrColorPicker";
 import { QrExportButtons } from "../components/qr/QrExportButtons";
 import { QrLogoUploader } from "../components/qr/QrLogoUploader";
 import { useQrGenerator } from "../hooks/useQrGenerator";
-
+import { createTemplate } from "../services/templateService";
+import type { TemplateItem } from "../types";
 
 export function GeneratorPage() {
+  const location = useLocation();
   const { form, setForm, preview, loadingPreview, downloading, error, downloadQr } = useQrGenerator();
+  const [templateName, setTemplateName] = useState("Meu template");
+  const [templateStatus, setTemplateStatus] = useState<string | null>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  useEffect(() => {
+    const template = (location.state as { template?: TemplateItem } | null)?.template;
+    if (!template) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      fgColor: template.fg_color,
+      bgColor: template.bg_color,
+      dotStyle: template.dot_style,
+      errorCorrection: template.error_correction,
+    }));
+    setTemplateName(template.name);
+    setTemplateStatus(`Modelo "${template.name}" carregado.`);
+  }, [location.state, setForm]);
+
+  async function handleSaveTemplate() {
+    const name = templateName.trim();
+    if (!name) {
+      setTemplateStatus("Informe um nome para salvar o template.");
+      return;
+    }
+
+    try {
+      setSavingTemplate(true);
+      setTemplateStatus(null);
+      await createTemplate({
+        name,
+        fg_color: form.fgColor,
+        bg_color: form.bgColor,
+        dot_style: form.dotStyle,
+        error_correction: form.errorCorrection,
+      });
+      setTemplateStatus("Template salvo com sucesso.");
+    } catch (saveError) {
+      setTemplateStatus(saveError instanceof Error ? saveError.message : "Nao foi possivel salvar o template.");
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
 
   return (
     <main className="mx-auto grid max-w-6xl gap-8 px-6 py-16 lg:grid-cols-[1fr_420px]">
@@ -90,6 +140,30 @@ export function GeneratorPage() {
             logoBase64={form.logoBase64}
             onChange={(value) => setForm((current) => ({ ...current, logoBase64: value }))}
           />
+
+          <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-slate-600">Nome do template</span>
+              <input
+                type="text"
+                value={templateName}
+                onChange={(event) => setTemplateName(event.target.value)}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-ink outline-none transition focus:border-ember"
+                placeholder="Ex: Produto X"
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => void handleSaveTemplate()}
+              disabled={savingTemplate}
+              className="mt-4 rounded-full bg-ink px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savingTemplate ? "Salvando..." : "Salvar template"}
+            </button>
+
+            {templateStatus ? <p className="mt-3 text-sm text-slate-600">{templateStatus}</p> : null}
+          </div>
 
           {error ? <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p> : null}
 

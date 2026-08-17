@@ -1,29 +1,39 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
-import { fetchTemplates } from "../services/templateService";
+import { deleteTemplate, fetchTemplates } from "../services/templateService";
 import type { TemplateItem } from "../types";
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<TemplateItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadTemplates() {
-      try {
-        setLoading(true);
-        const response = await fetchTemplates();
-        setTemplates(response.results);
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : "Nao foi possivel carregar os templates.");
-      } finally {
-        setLoading(false);
-      }
+  async function loadTemplates() {
+    try {
+      setLoading(true);
+      const response = await fetchTemplates();
+      setTemplates(response.results);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Nao foi possivel carregar os templates.");
+    } finally {
+      setLoading(false);
     }
+  }
 
+  useEffect(() => {
     void loadTemplates();
   }, []);
+
+  async function handleDeleteTemplate(id: number) {
+    try {
+      await deleteTemplate(id);
+      setTemplates((current) => current.filter((template) => template.id !== id));
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Nao foi possivel remover o template.");
+    }
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-16">
@@ -73,6 +83,23 @@ export function DashboardPage() {
                 <p>Estilo: {template.dot_style}</p>
                 <p>Correção: {template.error_correction}</p>
                 <p>Atualizado em: {new Date(template.updated_at).toLocaleDateString("pt-BR")}</p>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate("/generator", { state: { template } })}
+                  className="flex-1 rounded-full bg-ink px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800"
+                >
+                  Usar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteTemplate(template.id)}
+                  className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 transition hover:bg-red-100"
+                >
+                  Excluir
+                </button>
               </div>
             </article>
           ))}
