@@ -45,3 +45,24 @@ class AuthApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["email"], self.user.email)
+
+    def test_password_reset_request_returns_feedback(self):
+        response = self.client.post(
+            reverse("auth-password-reset-request"),
+            {"email": "tester@example.com"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("message", response.data)
+
+    def test_social_login_creates_or_returns_user(self):
+        response = self.client.post(
+            reverse("auth-social-login"),
+            {"provider": "google", "email": "social@example.com"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
