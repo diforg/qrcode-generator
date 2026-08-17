@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { useAuth } from "../context/AuthContext";
 import { deleteTemplate, fetchTemplates } from "../services/templateService";
 import type { TemplateItem } from "../types";
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const { isAuthenticated, logout } = useAuth();
   const [templates, setTemplates] = useState<TemplateItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,15 +18,25 @@ export function DashboardPage() {
       const response = await fetchTemplates();
       setTemplates(response.results);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Nao foi possivel carregar os templates.");
+      const message = loadError instanceof Error ? loadError.message : "Nao foi possivel carregar os templates.";
+      if (message.includes("sessao") || message.includes("autenticada")) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     void loadTemplates();
-  }, []);
+  }, [isAuthenticated, navigate, logout]);
 
   async function handleDeleteTemplate(id: number) {
     try {

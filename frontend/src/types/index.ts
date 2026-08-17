@@ -34,6 +34,7 @@ export interface TemplateItem {
 
 export interface HistoryItem {
   id: number;
+  template_id?: number | null;
   target_url: string;
   fg_color: string;
   bg_color: string;

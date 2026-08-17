@@ -13,6 +13,37 @@ class TemplateApiTests(APITestCase):
         )
         self.client.force_authenticate(user=self.user)
 
+    def test_history_includes_template_reference_for_generated_qr(self):
+        template = self.user.templates.create(
+            name="Saved Template",
+            fg_color="#111111",
+            bg_color="#eeeeee",
+            dot_style="rounded",
+            error_correction="H",
+        )
+
+        response = self.client.post(
+            reverse("qr-generate"),
+            {
+                "target_url": "https://example.com",
+                "fg_color": "#111111",
+                "bg_color": "#eeeeee",
+                "dot_style": "rounded",
+                "error_correction": "H",
+                "template_id": template.id,
+                "export_format": "PNG",
+                "resolution": 512,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        history_response = self.client.get(reverse("qr-history"), format="json")
+
+        self.assertEqual(history_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(history_response.data["results"][0]["template_id"], template.id)
+
     def test_create_template(self):
         payload = {
             "name": "Template Demo",

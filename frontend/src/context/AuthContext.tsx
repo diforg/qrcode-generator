@@ -49,7 +49,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [auth, setAuth] = useState(readStoredAuth);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(auth));
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (auth.user && auth.tokens?.access) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(auth));
+      return;
+    }
+
+    window.localStorage.removeItem(STORAGE_KEY);
   }, [auth]);
 
   const value = useMemo<AuthContextValue>(
@@ -57,9 +66,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: auth.user,
       tokens: auth.tokens,
       isAuthenticated: Boolean(auth.user && auth.tokens?.access),
-      login: (payload) => setAuth({ user: payload.user, tokens: payload.tokens }),
-      logout: () => setAuth({ user: null, tokens: null }),
-      register: (payload) => setAuth({ user: payload.user, tokens: payload.tokens }),
+      login: (payload) => {
+        const nextAuth = { user: payload.user, tokens: payload.tokens };
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAuth));
+        }
+        setAuth(nextAuth);
+      },
+      logout: () => {
+        if (typeof window !== "undefined") {
+          window.localStorage.removeItem(STORAGE_KEY);
+        }
+        setAuth({ user: null, tokens: null });
+      },
+      register: (payload) => {
+        const nextAuth = { user: payload.user, tokens: payload.tokens };
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAuth));
+        }
+        setAuth(nextAuth);
+      },
     }),
     [auth],
   );

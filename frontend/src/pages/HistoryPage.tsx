@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
+import { useAuth } from "../context/AuthContext";
 import { deleteHistoryItem, fetchHistory } from "../services/historyService";
 import type { HistoryItem } from "../types";
 
 export function HistoryPage() {
+  const navigate = useNavigate();
+  const { isAuthenticated, logout } = useAuth();
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,15 +18,25 @@ export function HistoryPage() {
       const response = await fetchHistory();
       setItems(response.results);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Nao foi possivel carregar o historico.");
+      const message = loadError instanceof Error ? loadError.message : "Nao foi possivel carregar o historico.";
+      if (message.includes("sessao") || message.includes("autenticada")) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     void refreshHistory();
-  }, []);
+  }, [isAuthenticated, navigate, logout]);
 
   async function handleDelete(id: number) {
     try {
@@ -63,10 +76,14 @@ export function HistoryPage() {
           {items.map((item) => (
             <article key={item.id} className="flex flex-col gap-4 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-soft md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">{item.export_format}</p>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+                  {item.template_id ? "Template salvo" : "Geração direta"}
+                </p>
                 <h2 className="mt-2 font-display text-2xl font-bold text-ink">{item.target_url}</h2>
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-600">
                   <span>Res: {item.resolution}px</span>
+                  <span>•</span>
+                  <span>{item.export_format}</span>
                   <span>•</span>
                   <span>{new Date(item.created_at).toLocaleString("pt-BR")}</span>
                 </div>

@@ -42,6 +42,7 @@ class QrGenerationHistorySerializer(serializers.ModelSerializer):
         model = QrGenerationHistory
         fields = (
             "id",
+            "template_id",
             "target_url",
             "fg_color",
             "bg_color",

@@ -11,8 +11,13 @@ function getStoredAuthToken(): string | null {
       return null;
     }
 
-    const parsed = JSON.parse(raw) as { access?: string } | null;
-    return parsed?.access ?? null;
+    const parsed = JSON.parse(raw) as {
+      access?: string;
+      refresh?: string;
+      tokens?: { access?: string; refresh?: string } | null;
+    } | null;
+
+    return parsed?.tokens?.access ?? parsed?.access ?? null;
   } catch {
     return null;
   }
@@ -30,8 +35,23 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   });
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || "Falha na requisicao.");
+    if (response.status === 401) {
+      throw new Error("Sua sessão expirou ou não foi autenticada. Faça login novamente.");
+    }
+
+    const rawText = await response.text();
+    let message = "Falha na requisicao.";
+
+    if (rawText) {
+      try {
+        const payload = JSON.parse(rawText) as { detail?: string; message?: string };
+        message = payload.detail || payload.message || rawText;
+      } catch {
+        message = rawText;
+      }
+    }
+
+    throw new Error(message);
   }
 
   return response.json() as Promise<T>;
@@ -47,6 +67,9 @@ export async function apiBlobRequest(path: string, init?: RequestInit): Promise<
     },
   });
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("Sua sessão expirou ou não foi autenticada. Faça login novamente.");
+    }
     throw new Error("Falha ao gerar o arquivo.");
   }
   return response.blob();
